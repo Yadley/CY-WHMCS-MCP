@@ -10,9 +10,14 @@ envFile.split(/\r?\n/).forEach(line => {
     }
 });
 
-const apiUrl = env.WHMCS_API_URL || 'https://creativeyadley.com/clientarea';
+const apiUrl = env.WHMCS_API_URL;
+if (!apiUrl) {
+    console.error('Configuration error: WHMCS_API_URL is required in .env');
+    process.exit(1);
+}
 const apiIdentifier = env.WHMCS_API_IDENTIFIER;
 const apiSecret = env.WHMCS_API_SECRET;
+const accessKey = env.WHMCS_ACCESS_KEY;
 
 console.log('Using API URL:', apiUrl);
 
@@ -25,6 +30,10 @@ async function getTicket(ticketid) {
         ticketid: ticketid.toString(),
         responsetype: 'json'
     };
+
+    if (accessKey) {
+        postData.accesskey = accessKey;
+    }
 
     const response = await fetch(url, {
         method: 'POST',

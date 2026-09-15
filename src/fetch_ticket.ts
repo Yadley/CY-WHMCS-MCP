@@ -18,6 +18,7 @@ async function main() {
         console.log(JSON.stringify(ticket, null, 2));
     } catch (err) {
         console.error('Error fetching ticket:', err);
+        process.exit(1);
     }
 }
 

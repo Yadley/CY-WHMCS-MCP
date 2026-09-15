@@ -12,6 +12,7 @@ envFile.split(/\r?\n/).forEach(line => {
 const apiUrl = env.WHMCS_API_URL;
 const apiIdentifier = env.WHMCS_API_IDENTIFIER;
 const apiSecret = env.WHMCS_API_SECRET;
+const accessKey = env.WHMCS_ACCESS_KEY;
 
 async function callWhmcs(action, params = {}) {
     const url = `${apiUrl.replace(/\/$/, '')}/includes/api.php`;
@@ -22,6 +23,10 @@ async function callWhmcs(action, params = {}) {
         responsetype: 'json',
         ...params
     };
+
+    if (accessKey) {
+        postData.accesskey = accessKey;
+    }
 
     const response = await fetch(url, {
         method: 'POST',

@@ -12,6 +12,7 @@ envFile.split(/\r?\n/).forEach(line => {
 const apiUrl = env.WHMCS_API_URL;
 const apiIdentifier = env.WHMCS_API_IDENTIFIER;
 const apiSecret = env.WHMCS_API_SECRET;
+const accessKey = env.WHMCS_ACCESS_KEY;
 
 async function callWhmcs(action, params = {}) {
     const url = `${apiUrl.replace(/\/$/, '')}/includes/api.php`;
@@ -22,6 +23,10 @@ async function callWhmcs(action, params = {}) {
         responsetype: 'json',
         ...params
     };
+
+    if (accessKey) {
+        postData.accesskey = accessKey;
+    }
 
     const response = await fetch(url, {
         method: 'POST',
@@ -47,14 +52,40 @@ Because your domain DNS is managed through Cloudflare, Google Workspace is askin
 As soon as you send that over, we will add the verification and mail records directly into DNS for you and confirm as soon as it is ready to go!`;
 
 async function main() {
-    console.log('Sending reply to ticket 16586...');
-    const result = await callWhmcs('AddTicketReply', {
-        ticketid: 16586,
-        adminusername: 'Brian',
-        message: message,
-        status: 'Answered'
-    });
-    console.log('Result:', JSON.stringify(result, null, 2));
+    const ticketId = 16586;
+    console.log(`Checking existing replies for ticket ${ticketId}...`);
+    try {
+        const ticketInfo = await callWhmcs('GetTicket', { ticketid: ticketId });
+        const existingReplies = ticketInfo?.replies?.reply || [];
+        const normalizedMessage = message.trim().replace(/\r\n/g, '\n');
+        
+        const isDuplicate = existingReplies.some(r => {
+            const existingText = (r.message || '').replace(/&quot;/g, '"').replace(/&#039;/g, "'").replace(/&amp;/g, '&').replace(/\r\n/g, '\n').trim();
+            return existingText.includes('Because your domain DNS is managed through Cloudflare') || existingText === normalizedMessage;
+        });
+
+        if (isDuplicate) {
+            console.log(`Matching reply already exists on ticket ${ticketId}. Skipping duplicate submission.`);
+            return;
+        }
+
+        console.log(`Sending reply to ticket ${ticketId}...`);
+        const result = await callWhmcs('AddTicketReply', {
+            ticketid: ticketId,
+            adminusername: 'Brian',
+            message: message,
+            status: 'Answered'
+        });
+        console.log('Result:', JSON.stringify(result, null, 2));
+
+        if (result.result !== 'success') {
+            console.error('Failed to post reply:', result.message || 'Unknown error');
+            process.exitCode = 1;
+        }
+    } catch (err) {
+        console.error('Error during reply execution:', err);
+        process.exitCode = 1;
+    }
 }
 
 main();
